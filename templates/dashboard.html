@@ -1,0 +1,59 @@
+{% extends 'base.html' %}{% from '_status.html' import level with context %}
+{% block title %}Объекты{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>{{ 'Объекты на обслуживании' if is_provider() else 'Мои объекты' }}</h1>
+  <div class="muted">{{ today.strftime('%d.%m.%Y') }}</div></div>
+  <div class="actions">
+    {% if is_provider() %}<a class="btn" href="{{ url_for('object_new') }}">+ Новый объект</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid k" style="margin-bottom:1rem">
+  <div class="kpi"><div class="v">{{ totals.objects }}</div><div class="l">объектов</div></div>
+  <div class="kpi red"><div class="v">{{ totals.red }}</div><div class="l">требуют внимания</div></div>
+  <div class="kpi yellow"><div class="v">{{ totals.yellow }}</div><div class="l">есть вопросы</div></div>
+  <div class="kpi green"><div class="v">{{ totals.green }}</div><div class="l">в норме</div></div>
+  <div class="kpi red"><div class="v">{{ totals.overdue }}</div><div class="l">просроченных работ</div></div>
+  <div class="kpi"><div class="v">{{ totals.issues }}</div><div class="l">открытых замечаний{% if totals.requests %}, из них заявок: {{ totals.requests }}{% endif %}</div></div>
+</div>
+
+<form class="rowform" style="margin-bottom:.8rem" method="get">
+  <input type="text" name="q" value="{{ q }}" placeholder="Поиск: название, адрес, эксплуатант" style="min-width:280px">
+  <select name="level">
+    <option value="">Все состояния</option>
+    {% for k, v in LEVELS.items() %}<option value="{{ k }}" {{ 'selected' if level_f==k }}>{{ v }}</option>{% endfor %}
+  </select>
+  <button class="btn ghost sm">Показать</button>
+</form>
+
+<div class="tablewrap">
+<table class="tbl">
+  <thead><tr><th>Объект</th><th>Состояние</th><th>Чек-лист</th><th>Работы</th><th>Замечания</th><th>Последняя запись</th></tr></thead>
+  <tbody>
+  {% for o, s in rows %}
+  <tr class="row-{{ s.level }}">
+    <td><a href="{{ url_for('object_view', object_id=o.id) }}"><b>{{ o.name }}</b></a>
+      <div class="small muted">{{ o.address or '' }}{% if is_provider() and o.client_name %} · {{ o.client_name }}{% endif %}</div></td>
+    <td>{{ level(s.level) }}</td>
+    <td style="min-width:120px"><div class="bar"><i style="width:{{ s.cl_pct }}%"></i></div>
+      <div class="small muted">{{ s.cl_yes }} из {{ s.cl_total }}{% if s.cl_no %} · <span style="color:var(--red)">нет: {{ s.cl_no }}</span>{% endif %}</div></td>
+    <td class="small">
+      {% if s.tasks.overdue %}<span class="pill red">просрочено {{ s.tasks.overdue }}</span> {% endif %}
+      {% if s.tasks.soon %}<span class="pill yellow">скоро {{ s.tasks.soon }}</span> {% endif %}
+      {% if s.tasks.nodata %}<span class="pill gray">нет данных {{ s.tasks.nodata }}</span> {% endif %}
+      {% if not (s.tasks.overdue or s.tasks.soon or s.tasks.nodata) %}<span class="pill green">все в срок</span>{% endif %}
+    </td>
+    <td class="small">{% if s.open_issues %}{{ s.open_issues }}{% if s.critical %} · <span style="color:var(--red)">крит.: {{ s.critical }}</span>{% endif %}{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td class="small muted">{{ s.last_journal|ru_date }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="empty">
+    {% if is_provider() %}Объектов пока нет. <a href="{{ url_for('object_new') }}">Заведите первый объект</a> — система задаст вопросы анкеты и сформирует график работ.
+    {% else %}За вашей организацией пока не закреплено объектов. Обратитесь в обслуживающую организацию.{% endif %}
+  </td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

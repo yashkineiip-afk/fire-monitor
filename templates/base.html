@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Мониторинг{% endblock %} · Мониторинг ПБ</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if user %}
+<header class="top"><div class="wrap">
+  <a class="brand" href="{{ url_for('dashboard') }}"><span class="dot"></span>Мониторинг ПБ</a>
+  <nav class="nav">
+    <a href="{{ url_for('dashboard') }}" class="{{ 'on' if request.endpoint=='dashboard' }}">Объекты</a>
+    <a href="{{ url_for('plan') }}" class="{{ 'on' if request.endpoint=='plan' }}">План-график</a>
+    <a href="{{ url_for('all_issues') }}" class="{{ 'on' if request.endpoint=='all_issues' }}">{{ 'Замечания и заявки' if is_provider() else 'Заявки и замечания' }}</a>
+    {% if is_provider() %}<a href="{{ url_for('admin_clients') }}" class="{{ 'on' if request.endpoint=='admin_clients' }}">Эксплуатанты</a>{% endif %}
+    {% if user.role == 'admin' %}<a href="{{ url_for('admin_users') }}" class="{{ 'on' if request.endpoint=='admin_users' }}">Пользователи</a>{% endif %}
+  </nav>
+  <div class="who">
+    <a href="{{ url_for('account') }}" style="color:#cfd2d6">{{ user.name }}</a> · {{ ROLE_NAMES[user.role] }}
+    <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button>Выйти</button></form>
+  </div>
+</div></header>
+<div class="normbar"><div class="wrap">{{ NORMS_NOTE }}</div></div>
+{% endif %}
+<main class="wrap">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+<script>
+document.querySelectorAll('.sys input[data-sys]').forEach(function(cb){
+  var box = cb.closest('.sys');
+  var sync = function(){ box.classList.toggle('on', cb.checked); };
+  cb.addEventListener('change', sync); sync();
+});
+document.querySelectorAll('[data-confirm]').forEach(function(f){
+  f.addEventListener('submit', function(e){ if(!confirm(f.dataset.confirm)) e.preventDefault(); });
+});
+</script>
+</body>
+</html>

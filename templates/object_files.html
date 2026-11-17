@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Документы · {{ obj.name }}{% endblock %}
+{% block content %}
+{% include '_object_head.html' %}
+<div class="panel">
+  <form method="post" enctype="multipart/form-data" class="rowform">{% include '_csrf.html' %}
+    <select name="category">{% for c in CATS %}<option>{{ c }}</option>{% endfor %}</select>
+    <input type="file" name="files" multiple required>
+    <button class="btn sm">Загрузить</button>
+  </form>
+  <p class="small muted" style="margin-bottom:0">Договор на ТО, исполнительная документация, приказы, сертификаты, акты. Файлы, прикреплённые к чек-листу, журналу и замечаниям, тоже собраны здесь.</p>
+</div>
+<div class="tablewrap"><table class="tbl">
+  <thead><tr><th>Файл</th><th>Категория</th><th>Откуда</th><th>Загрузил</th><th></th></tr></thead>
+  <tbody>
+  {% for f in rows %}
+  <tr><td><a href="{{ url_for('file_download', file_id=f.id) }}">📎 {{ f.original_name }}</a><div class="small muted">{{ (f.size or 0) // 1024 }} КБ</div></td>
+    <td class="small">{{ f.category or '—' }}</td>
+    <td class="small">{{ {'checklist':'Чек-лист п. ' ~ f.link_id, 'journal':'Журнал', 'issue':'Замечание'}.get(f.link_type, 'Документы') }}</td>
+    <td class="small">{{ f.author or '' }}<div class="muted">{{ f.uploaded_at|ru_date }}</div></td>
+    <td>{% if user.role=='admin' or f.uploaded_by==user.id %}
+      <form method="post" action="{{ url_for('file_delete', file_id=f.id) }}" data-confirm="Удалить файл «{{ f.original_name }}»?">{% include '_csrf.html' %}<button class="btn ghost sm">Удалить</button></form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="5" class="empty">Документов пока нет</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

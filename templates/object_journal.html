@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Журнал · {{ obj.name }}{% endblock %}
+{% block content %}
+{% include '_object_head.html' %}
+<div class="panel">
+  <h2 style="margin-top:0">Новая запись</h2>
+  <form method="post" enctype="multipart/form-data">{% include '_csrf.html' %}
+    <div class="fields">
+      <div class="field"><label>Дата</label><input type="date" name="date" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}" required></div>
+      <div class="field"><label>Вид работ</label><select name="work_type">{% for w in WORK_TYPES %}<option>{{ w }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Система</label><select name="system_code"><option value="">—</option>
+        {% for code in s if code in SYSTEMS %}<option value="{{ code }}">{{ SYSTEMS[code].name }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Засчитать как регламентную работу</label><select name="task_code"><option value="">— нет —</option>
+        {% for t in tasks %}<option value="{{ t.code }}">{{ t.title }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Результат</label><select name="result">{% for r in RESULTS %}<option>{{ r }}</option>{% endfor %}</select>
+        <div class="hint">«Неисправно» создаст критическое замечание</div></div>
+      <div class="field"><label>Исполнитель</label><input type="text" name="performer" placeholder="{{ user.name }}"></div>
+      <div class="field" style="grid-column:1/-1"><label>Описание</label><textarea name="description" placeholder="Что сделано, что выявлено"></textarea></div>
+      <div class="field"><label>Акт / протокол / фото</label><input type="file" name="file"></div>
+    </div>
+    <button class="btn">Добавить запись</button>
+  </form>
+</div>
+
+<form class="rowform" method="get" style="margin-bottom:.6rem">
+  <select name="system"><option value="">Все системы</option>
+    {% for code in s if code in SYSTEMS %}<option value="{{ code }}" {{ 'selected' if sys_f==code }}>{{ SYSTEMS[code].name }}</option>{% endfor %}</select>
+  <button class="btn ghost sm">Фильтр</button>
+</form>
+<div class="tablewrap"><table class="tbl">
+  <thead><tr><th>Дата</th><th>Работа</th><th>Система</th><th>Результат</th><th>Исполнитель</th><th>Файлы</th></tr></thead>
+  <tbody>
+  {% for j in entries %}
+  <tr class="row-{{ 'red' if j.result=='Неисправно' else 'yellow' if j.result=='Выполнено с замечаниями' else '' }}">
+    <td style="white-space:nowrap">{{ j.date|ru_date }}</td>
+    <td>{{ j.work_type }}{% if j.task_code and j.task_code in TASKS %} <span class="tag">по графику</span>{% endif %}<div class="small">{{ j.description or '' }}</div></td>
+    <td class="small">{{ SYSTEMS[j.system_code].name if j.system_code in SYSTEMS else '—' }}</td>
+    <td class="small">{{ j.result }}</td>
+    <td class="small">{{ j.performer or '' }}<div class="muted">внёс: {{ j.author or 'система' }}</div></td>
+    <td class="small">{% for f in files.get(j.id, []) %}<a href="{{ url_for('file_download', file_id=f.id) }}">📎 {{ f.original_name }}</a><br>{% endfor %}</td>
+  </tr>
+  {% else %}<tr><td colspan="6" class="empty">Записей нет</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

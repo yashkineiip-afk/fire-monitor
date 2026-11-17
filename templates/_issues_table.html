@@ -1,0 +1,29 @@
+{% from '_status.html' import sev, istatus with context %}
+<div class="tablewrap"><table class="tbl">
+  <thead><tr><th>Замечание</th>{% if show_object %}<th>Объект</th>{% endif %}<th>Важность</th><th>Статус</th><th>Срок</th><th>Действие</th></tr></thead>
+  <tbody>
+  {% for i in rows %}
+  <tr class="row-{{ 'red' if i.severity=='critical' and i.status!='resolved' else '' }}">
+    <td><span class="tag">{{ ISSUE_KIND[i.kind] }}</span> <b>{{ i.title }}</b>
+      {% if i.description %}<div class="small">{{ i.description }}</div>{% endif %}
+      <div class="small muted">{{ i.created_at|ru_date }} · {{ i.author or 'система' }}{% if i.resolution %} · решение: {{ i.resolution }}{% endif %}</div>
+      {% if files %}{% for f in files.get(i.id, []) %}<div class="small"><a href="{{ url_for('file_download', file_id=f.id) }}">📎 {{ f.original_name }}</a></div>{% endfor %}{% endif %}
+    </td>
+    {% if show_object %}<td class="small"><a href="{{ url_for('object_issues', object_id=i.object_id) }}">{{ i.object_name }}</a></td>{% endif %}
+    <td>{{ sev(i.severity) }}</td>
+    <td>{{ istatus(i.status) }}{% if i.resolved_at %}<div class="small muted">{{ i.resolved_at|ru_date }}</div>{% endif %}</td>
+    <td class="small {{ 'red' if i.due_date and i.due_date < today.isoformat() and i.status!='resolved' }}" style="{{ 'color:var(--red)' if i.due_date and i.due_date < today.isoformat() and i.status!='resolved' }}">{{ i.due_date|ru_date }}</td>
+    <td>
+      <form method="post" enctype="multipart/form-data" action="{{ url_for('issue_update', issue_id=i.id) }}">{% include '_csrf.html' %}
+        <input type="hidden" name="back" value="{{ request.full_path }}">
+        <div class="rowform"><select name="status">{% for k,v in ISSUE_STATUS.items() %}<option value="{{ k }}" {{ 'selected' if i.status==k }}>{{ v }}</option>{% endfor %}</select>
+        <button class="btn sm">OK</button></div>
+        <details><summary>комментарий, файл</summary>
+          <input type="text" name="resolution" placeholder="Что сделано" style="margin-top:.3rem">
+          <input type="file" name="file" style="margin-top:.3rem"></details>
+      </form>
+    </td>
+  </tr>
+  {% else %}<tr><td colspan="6" class="empty">Нет записей</td></tr>{% endfor %}
+  </tbody>
+</table></div>

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}{% from '_status.html' import tstatus with context %}
+{% block title %}График работ · {{ obj.name }}{% endblock %}
+{% block content %}
+{% include '_object_head.html' %}
+<p class="muted small">Регламентные работы сформированы автоматически по анкете. Отметка о выполнении создаёт запись в журнале и сдвигает следующий срок. «Нет данных» — внесите дату последнего выполнения.</p>
+<div class="tablewrap">
+<table class="tbl">
+  <thead><tr><th>Работа</th><th>Кто</th><th>Периодичность</th><th>Выполнено</th><th>Следующий срок</th><th>Отметить выполнение</th></tr></thead>
+  <tbody>
+  {% for t in tasks %}
+  <tr class="row-{{ TASK_STATUS[t.status][1] if t.status!='nodata' else '' }}">
+    <td><b>{{ t.title }}</b><div class="small muted">{{ t.ref }}</div>{% if t.hint %}<div class="small muted">{{ t.hint }}</div>{% endif %}</td>
+    <td class="small">{{ SIDE_NAMES[t.side] }}</td>
+    <td class="small">{{ t.period|period }}{% if t.custom %} <span class="tag">изменено</span>{% endif %}
+      {% if is_provider() %}<details><summary>изменить</summary>
+        <form method="post" action="{{ url_for('task_edit', object_id=obj.id, task_id=t.id) }}" style="margin-top:.4rem">{% include '_csrf.html' %}
+          <div class="field"><label>Месяцев</label><input type="number" name="period" min="1" max="120" value="{{ t.period }}"></div>
+          <div class="field"><label>Кто выполняет</label><select name="side">{% for k,v in SIDE_NAMES.items() %}<option value="{{ k }}" {{ 'selected' if t.side==k }}>{{ v }}</option>{% endfor %}</select></div>
+          <label class="check"><input type="checkbox" name="reset"> вернуть норматив</label>
+          <button class="btn sm">Сохранить</button>
+        </form></details>{% endif %}
+    </td>
+    <td class="small">{{ t.last_done|ru_date }}</td>
+    <td style="white-space:nowrap">{{ tstatus(t.status) }}<div class="small muted">{{ t.next_due|ru_date if t.next_due else '' }}
+      {% if t.days is not none %}{% if t.days < 0 %}({{ -t.days }} дн. назад){% else %}(через {{ t.days }} дн.){% endif %}{% endif %}</div></td>
+    <td>
+      <form method="post" enctype="multipart/form-data" action="{{ url_for('task_done', object_id=obj.id, task_id=t.id) }}">{% include '_csrf.html' %}
+        <div class="rowform"><input type="date" name="date" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}" required>
+          <button class="btn sm">Выполнено</button></div>
+        <details><summary>результат, акт, примечание</summary>
+          <select name="result" style="margin-top:.4rem">{% for r in RESULTS %}<option>{{ r }}</option>{% endfor %}</select>
+          <input type="text" name="note" placeholder="Примечание" style="margin-top:.4rem">
+          <input type="text" name="performer" placeholder="Исполнитель" style="margin-top:.4rem">
+          <input type="file" name="file" style="margin-top:.4rem"></details>
+      </form>
+    </td>
+  </tr>
+  {% else %}<tr><td colspan="6" class="empty">Работ нет — заполните системы в анкете.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Анкета: ' ~ obj.name if obj else 'Новый объект' }}{% endblock %}
+{% block content %}
+<div class="head"><div>
+  <h1>{{ 'Анкета объекта' if obj else 'Новый объект' }}</h1>
+  <div class="muted">По ответам система определит применимые требования, чек-лист и график регламентных работ.</div>
+</div>
+{% if obj %}<div class="actions"><a class="btn ghost" href="{{ url_for('object_view', object_id=obj.id) }}">← К объекту</a></div>{% endif %}
+</div>
+
+<form method="post">{% include '_csrf.html' %}
+<div class="panel">
+  <h2 style="margin-top:0">Объект</h2>
+  <div class="fields">
+    <div class="field"><label>Название *</label><input type="text" name="name" required value="{{ obj.name if obj else '' }}" {{ '' if is_provider() or not obj else '' }}></div>
+    <div class="field"><label>Адрес</label><input type="text" name="address" value="{{ obj.address if obj else '' }}"></div>
+    {% if is_provider() %}
+    <div class="field"><label>Эксплуатирующая организация</label>
+      <select name="client_id"><option value="">— не выбрана —</option>
+        {% for c in clients %}<option value="{{ c.id }}" {{ 'selected' if obj and obj.client_id==c.id }}>{{ c.name }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label>…или новая организация</label><input type="text" name="new_client" placeholder="ООО «…» — будет создана"></div>
+    {% endif %}
+  </div>
+</div>
+
+{% for section in Q %}
+<div class="panel">
+  <h2 style="margin-top:0">{{ section.title }}</h2>
+  <div class="fields">
+  {% for f in section.fields %}{% set val = profile.get(f.key) %}
+    {% if f.type == 'bool' %}
+      <label class="check"><input type="checkbox" name="p_{{ f.key }}" {{ 'checked' if val }}> {{ f.label }}</label>
+    {% else %}
+    <div class="field" {% if f.type=='textarea' %}style="grid-column:1/-1"{% endif %}><label>{{ f.label }}</label>
+      {% if f.type == 'select' %}
+        <select name="p_{{ f.key }}"><option value="">—</option>
+          {% for opt in f.options %}<option {{ 'selected' if val==opt }}>{{ opt }}</option>{% endfor %}</select>
+      {% elif f.type == 'textarea' %}<textarea name="p_{{ f.key }}">{{ val or '' }}</textarea>
+      {% else %}<input type="{{ 'number' if f.type=='number' else 'text' }}" step="any" name="p_{{ f.key }}" value="{{ val or '' }}">{% endif %}
+      {% if f.hint %}<div class="hint">{{ f.hint }}</div>{% endif %}
+    </div>
+    {% endif %}
+  {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+<div class="panel">
+  <h2 style="margin-top:0">Системы противопожарной защиты и оборудование</h2>
+  <p class="muted small">Отметьте, что есть на объекте, и заполните сведения. От этого зависят регламентные работы и пункты чек-листа.</p>
+  {% for code, sd in SYSTEMS.items() %}{% set sp = systems.get(code) %}
+  <div class="sys">
+    <label class="check"><input type="checkbox" data-sys name="sys_{{ code }}" {{ 'checked' if sp is not none }}> {{ sd.name }}</label>
+    <div class="sysfields fields">
+      {% for f in sd.fields %}{% set v = sp.get(f.key) if sp else none %}
+        {% if f.type == 'bool' %}<label class="check"><input type="checkbox" name="s_{{ code }}_{{ f.key }}" {{ 'checked' if v }}> {{ f.label }}</label>
+        {% else %}
+        <div class="field"><label>{{ f.label }}</label>
+          {% if f.type == 'select' %}<select name="s_{{ code }}_{{ f.key }}"><option value="">—</option>
+            {% for opt in f.options %}<option {{ 'selected' if v==opt }}>{{ opt }}</option>{% endfor %}</select>
+          {% else %}<input type="{{ 'number' if f.type=='number' else 'text' }}" step="any" name="s_{{ code }}_{{ f.key }}" value="{{ v or '' }}">{% endif %}
+          {% if f.hint %}<div class="hint">{{ f.hint }}</div>{% endif %}
+        </div>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<button class="btn">{{ 'Сохранить анкету' if obj else 'Создать объект' }}</button>
+</form>
+{% endblock %}

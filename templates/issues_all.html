@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Замечания и заявки{% endblock %}
+{% block content %}
+<div class="head"><h1>Замечания и заявки</h1>
+<form class="rowform" method="get"><select name="status">
+  <option value="active" {{ 'selected' if status_f=='active' }}>Активные</option>
+  {% for k,v in ISSUE_STATUS.items() %}<option value="{{ k }}" {{ 'selected' if status_f==k }}>{{ v }}</option>{% endfor %}
+  <option value="all" {{ 'selected' if status_f=='all' }}>Все</option></select><button class="btn ghost sm">Показать</button></form></div>
+{% set show_object = true %}{% set files = none %}
+{% include '_issues_table.html' %}
+{% endblock %}

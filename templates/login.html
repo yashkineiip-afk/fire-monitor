@@ -1,0 +1,12 @@
+{% extends 'base.html' %}{% block title %}Вход{% endblock %}
+{% block content %}
+<div class="login panel">
+  <h1><span style="color:var(--accent)">●</span> Мониторинг ПБ</h1>
+  <p class="muted">Противопожарное состояние объектов</p>
+  <form method="post">{% include '_csrf.html' %}
+    <div class="field"><label>Email</label><input type="email" name="email" required autofocus></div>
+    <div class="field"><label>Пароль</label><input type="password" name="password" required></div>
+    <button class="btn" style="width:100%">Войти</button>
+  </form>
+</div>
+{% endblock %}

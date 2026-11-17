@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Отчёт · {{ obj.name }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  body { background:#fff; } main { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+  .tbl td, .tbl th { padding: .35rem .4rem; font-size: .85rem; }
+  h2 { border-bottom: 2px solid var(--ink); padding-bottom: .2rem; }
+  .sign { display:grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2.5rem; font-size:.9rem; }
+  .sign div { border-top: 1px solid var(--ink); padding-top: .3rem; }
+</style></head>
+<body><main>
+<div class="actions noprint" style="margin-bottom:1rem"><button class="btn" onclick="window.print()">Печать / сохранить PDF</button></div>
+<div class="small muted">Сформировано {{ now.strftime('%d.%m.%Y %H:%M') }} · система «Мониторинг ПБ»</div>
+<h1>Отчёт о противопожарном состоянии объекта</h1>
+<p><b>{{ obj.name }}</b>, {{ obj.address or 'адрес не указан' }}{% if obj.client_name %} · {{ obj.client_name }}{% endif %}</p>
+<p>Общая оценка: <span class="pill {{ sm.level }}">{{ LEVELS[sm.level] }}</span> ·
+  чек-лист {{ sm.cl_pct }}% ({{ sm.cl_yes }}/{{ sm.cl_total }}, «нет» — {{ sm.cl_no }}, без ответа — {{ sm.cl_unanswered }}) ·
+  работ просрочено {{ sm.tasks.overdue }}, без данных {{ sm.tasks.nodata }} · открытых замечаний {{ sm.open_issues }}</p>
+{% for w in warnings %}<div class="warn">⚠ {{ w }}</div>{% endfor %}
+
+<h2>1. Сведения об объекте</h2>
+<dl class="kv">{% for sec in Q %}{% for f in sec.fields if p.get(f.key) %}
+  <dt>{{ f.label }}</dt><dd>{{ 'да' if p[f.key] is sameas true else p[f.key] }}</dd>{% endfor %}{% endfor %}</dl>
+
+<h2>2. Системы противопожарной защиты</h2>
+<table class="tbl">{% for code, params in s.items() if code in SYSTEMS %}
+  <tr><td><b>{{ SYSTEMS[code].name }}</b></td><td class="small">{% for f in SYSTEMS[code].fields if params.get(f.key) %}{{ f.label }}: {{ 'да' if params[f.key] is sameas true else params[f.key] }}{{ '; ' if not loop.last }}{% endfor %}</td></tr>
+{% else %}<tr><td>Не указаны</td></tr>{% endfor %}</table>
+
+<h2>3. Регламентные работы</h2>
+<table class="tbl"><tr><th>Работа</th><th>Норма</th><th>Период.</th><th>Выполнено</th><th>Срок</th><th>Статус</th></tr>
+{% for t in tasks %}<tr><td>{{ t.title }}</td><td class="small">{{ t.ref }}</td><td class="small">{{ t.period|period }}</td>
+  <td>{{ t.last_done|ru_date }}</td><td>{{ t.next_due|ru_date if t.next_due else '—' }}</td>
+  <td><span class="pill {{ TASK_STATUS[t.status][1] }}">{{ TASK_STATUS[t.status][0] }}</span></td></tr>{% endfor %}</table>
+
+<h2>4. Соблюдение требований (чек-лист)</h2>
+<table class="tbl"><tr><th>№</th><th>Требование</th><th>Ответ</th><th>Комментарий</th></tr>
+{% for r in cl %}<tr><td>{{ r.no }}</td><td class="small">{{ r.text }}<div class="muted">{{ r.ref }}</div></td>
+  <td>{% if r.answer %}<span class="pill {{ {'yes':'green','no':'red','na':'gray'}[r.answer] }}">{{ ANSWERS[r.answer] }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+  <td class="small">{{ r.comment or '' }}</td></tr>{% endfor %}</table>
+
+<h2>5. Открытые замечания</h2>
+<table class="tbl"><tr><th>Замечание</th><th>Важность</th><th>Срок</th></tr>
+{% for i in issues %}<tr><td>{{ i.title }}{% if i.description %}<div class="small muted">{{ i.description }}</div>{% endif %}</td><td>{{ SEVERITY[i.severity] }}</td><td>{{ i.due_date|ru_date }}</td></tr>
+{% else %}<tr><td colspan="3">Нет</td></tr>{% endfor %}</table>
+
+<p class="small muted" style="margin-top:1.5rem">{{ NORMS_NOTE }}</p>
+<div class="sign"><div>Представитель обслуживающей организации</div><div>Представитель эксплуатанта</div></div>
+</main></body></html>

@@ -1,0 +1,4 @@
+{% macro level(l) %}<span class="pill {{ l }}">{{ LEVELS[l] }}</span>{% endmacro %}
+{% macro tstatus(s) %}<span class="pill {{ TASK_STATUS[s][1] }}">{{ TASK_STATUS[s][0] }}</span>{% endmacro %}
+{% macro sev(s) %}<span class="pill {{ {'critical':'red','medium':'yellow','low':'gray'}[s] }}">{{ SEVERITY[s] }}</span>{% endmacro %}
+{% macro istatus(s) %}<span class="pill {{ {'open':'red','in_progress':'yellow','resolved':'green'}[s] }}">{{ ISSUE_STATUS[s] }}</span>{% endmacro %}

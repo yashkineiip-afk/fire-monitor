@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Эксплуатанты{% endblock %}
+{% block content %}
+<h1>Эксплуатирующие организации</h1>
+<p class="muted">Собственники, арендаторы, управляющие компании. Пользователи-эксплуатанты видят только объекты своей организации.</p>
+<div class="panel">
+  <h2 style="margin-top:0">Добавить организацию</h2>
+  <form method="post">{% include '_csrf.html' %}
+    <div class="fields">
+      <div class="field"><label>Название *</label><input type="text" name="name" required></div>
+      <div class="field"><label>ИНН</label><input type="text" name="inn"></div>
+      <div class="field"><label>Контактное лицо</label><input type="text" name="contact_name"></div>
+      <div class="field"><label>Телефон</label><input type="text" name="phone"></div>
+      <div class="field"><label>Email</label><input type="email" name="email"></div>
+    </div>
+    <button class="btn">Добавить</button>
+  </form>
+</div>
+<div class="tablewrap"><table class="tbl">
+  <thead><tr><th>Организация</th><th>Контакт</th><th>Объектов</th><th>Пользователей</th><th></th></tr></thead>
+  <tbody>
+  {% for c in clients %}
+  <tr><td><b>{{ c.name }}</b><div class="small muted">ИНН {{ c.inn or '—' }}</div></td>
+    <td class="small">{{ c.contact_name or '' }}<div class="muted">{{ c.phone or '' }} {{ c.email or '' }}</div></td>
+    <td>{{ c.n_obj }}</td><td>{{ c.n_users }}</td>
+    <td><details><summary>изменить</summary>
+      <form method="post" style="margin-top:.4rem;min-width:240px">{% include '_csrf.html' %}<input type="hidden" name="id" value="{{ c.id }}">
+        <div class="field"><input type="text" name="name" value="{{ c.name }}" required></div>
+        <div class="field"><input type="text" name="inn" value="{{ c.inn or '' }}" placeholder="ИНН"></div>
+        <div class="field"><input type="text" name="contact_name" value="{{ c.contact_name or '' }}" placeholder="Контакт"></div>
+        <div class="field"><input type="text" name="phone" value="{{ c.phone or '' }}" placeholder="Телефон"></div>
+        <div class="field"><input type="email" name="email" value="{{ c.email or '' }}" placeholder="Email"></div>
+        <button class="btn sm">Сохранить</button></form></details></td></tr>
+  {% else %}<tr><td colspan="5" class="empty">Организаций нет</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends 'base.html' %}{% from '_status.html' import tstatus with context %}
+{% block title %}План-график{% endblock %}
+{% block content %}
+<div class="head"><div><h1>План-график работ</h1><div class="muted">Просроченные, без данных и со сроком в ближайшие {{ horizon }} дней — по всем объектам</div></div>
+<form class="rowform" method="get">
+  <select name="days">{% for d in [14, 30, 60, 90, 180, 365] %}<option value="{{ d }}" {{ 'selected' if horizon==d }}>{{ d }} дней</option>{% endfor %}</select>
+  <select name="side"><option value="">Все исполнители</option>{% for k,v in SIDE_NAMES.items() %}<option value="{{ k }}" {{ 'selected' if side_f==k }}>{{ v }}</option>{% endfor %}</select>
+  <button class="btn ghost sm">Показать</button></form></div>
+<div class="tablewrap"><table class="tbl">
+  <thead><tr><th>Срок</th><th>Статус</th><th>Работа</th><th>Объект</th><th>Кто</th></tr></thead>
+  <tbody>
+  {% for o, t in items %}
+  <tr><td style="white-space:nowrap">{{ t.next_due|ru_date if t.next_due else '—' }}</td><td>{{ tstatus(t.status) }}</td>
+    <td>{{ t.title }}<div class="small muted">{{ t.ref }} · {{ t.period|period }}</div></td>
+    <td><a href="{{ url_for('object_schedule', object_id=o.id) }}">{{ o.name }}</a><div class="small muted">{{ o.address or '' }}</div></td>
+    <td class="small">{{ SIDE_NAMES[t.side] }}</td></tr>
+  {% else %}<tr><td colspan="5" class="empty">На выбранный период работ нет</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

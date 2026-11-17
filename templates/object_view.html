@@ -1,0 +1,72 @@
+{% extends 'base.html' %}{% from '_status.html' import tstatus, sev with context %}
+{% block title %}{{ obj.name }}{% endblock %}
+{% block content %}
+{% include '_object_head.html' %}
+
+{% for w in warnings %}<div class="warn">⚠ {{ w }}</div>{% endfor %}
+
+<div class="grid k" style="margin:1rem 0">
+  <div class="kpi {{ 'green' if sm.cl_pct >= 90 else 'yellow' if sm.cl_pct >= 60 else 'red' }}"><div class="v">{{ sm.cl_pct }}%</div><div class="l">чек-лист выполнен ({{ sm.cl_yes }} из {{ sm.cl_total }})</div></div>
+  <div class="kpi red"><div class="v">{{ sm.tasks.overdue }}</div><div class="l">просроченных работ</div></div>
+  <div class="kpi yellow"><div class="v">{{ sm.tasks.soon }}</div><div class="l">работ скоро по сроку</div></div>
+  <div class="kpi"><div class="v">{{ sm.tasks.nodata }}</div><div class="l">работ без данных</div></div>
+  <div class="kpi {{ 'red' if sm.critical else '' }}"><div class="v">{{ sm.open_issues }}</div><div class="l">открытых замечаний</div></div>
+</div>
+
+<div class="grid two">
+  <div>
+    <div class="panel">
+      <h2 style="margin-top:0">Ближайшие и просроченные работы</h2>
+      {% set shown = tasks|selectattr('status', 'in', ['overdue','soon','nodata'])|list %}
+      {% if shown %}
+      <table class="tbl">
+        {% for t in shown[:8] %}
+        <tr><td>{{ t.title }}<div class="small muted">{{ SIDE_NAMES[t.side] }} · {{ t.period|period }}</div></td>
+          <td style="white-space:nowrap">{{ tstatus(t.status) }}<div class="small muted">{{ t.next_due|ru_date if t.next_due else '' }}</div></td></tr>
+        {% endfor %}
+      </table>
+      {% if shown|length > 8 %}<p class="small"><a href="{{ url_for('object_schedule', object_id=obj.id) }}">Все работы ({{ shown|length }}) →</a></p>{% endif %}
+      {% else %}<p class="muted">Все работы выполняются в срок.</p>{% endif %}
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">Открытые замечания</h2>
+      {% for i in issues %}
+        <div style="padding:.4rem 0;border-bottom:1px solid var(--line)">{{ sev(i.severity) }} <span class="tag">{{ ISSUE_KIND[i.kind] }}</span> {{ i.title }}
+          {% if i.due_date %}<span class="small muted"> · срок {{ i.due_date|ru_date }}</span>{% endif %}</div>
+      {% else %}<p class="muted">Нет открытых замечаний.</p>{% endfor %}
+      <p class="small"><a href="{{ url_for('object_issues', object_id=obj.id) }}">{{ 'Добавить замечание' if is_provider() else 'Подать заявку' }} →</a></p>
+    </div>
+  </div>
+  <div>
+    <div class="panel">
+      <h2 style="margin-top:0">Объект</h2>
+      <dl class="kv">
+        <dt>Назначение</dt><dd>{{ p.purpose or '—' }}</dd>
+        <dt>Класс ФПО</dt><dd>{{ p.fclass or '—' }}</dd>
+        <dt>Этажность / высота</dt><dd>{{ p.floors or '—' }} эт. / {{ p.height_m or '—' }} м</dd>
+        <dt>Площадь</dt><dd>{{ p.area_m2 or '—' }} м²</dd>
+        <dt>Огнестойкость / класс К</dt><dd>{{ p.fire_resistance or '—' }} / {{ p.constr_class or '—' }}</dd>
+        <dt>Людей одновременно</dt><dd>{{ p.max_people or '—' }}</dd>
+        <dt>Эксплуатирует</dt><dd>{{ p.usage_right or '—' }}</dd>
+        <dt>Ответственный за ПБ</dt><dd>{{ p.responsible_name or '—' }}{% if p.responsible_phone %}, {{ p.responsible_phone }}{% endif %}</dd>
+      </dl>
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">Системы и оборудование</h2>
+      {% for code, params in s.items() if code in SYSTEMS %}
+        <div style="padding:.35rem 0;border-bottom:1px solid var(--line)"><b>{{ SYSTEMS[code].name }}</b>
+          <div class="small muted">{% for f in SYSTEMS[code].fields if params.get(f.key) %}{{ f.label }}: {{ 'да' if params[f.key] is sameas true else params[f.key] }}{{ '; ' if not loop.last }}{% endfor %}</div></div>
+      {% else %}<p class="muted">Системы не указаны. <a href="{{ url_for('object_edit', object_id=obj.id) }}">Заполните анкету</a>.</p>{% endfor %}
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">Последние записи журнала</h2>
+      {% for j in journal %}<div class="small" style="padding:.3rem 0;border-bottom:1px solid var(--line)"><b>{{ j.date|ru_date }}</b> · {{ TASKS[j.task_code].title if j.task_code in TASKS else (j.description or j.work_type) }} — <span class="muted">{{ j.result }}</span></div>
+      {% else %}<p class="muted">Записей пока нет.</p>{% endfor %}
+    </div>
+    {% if user.role == 'admin' %}
+    <form method="post" action="{{ url_for('object_archive', object_id=obj.id) }}" data-confirm="{{ 'Вернуть объект из архива?' if obj.archived else 'Перенести объект в архив? Он пропадёт из списков, данные сохранятся.' }}">
+      {% include '_csrf.html' %}<button class="btn ghost sm">{{ 'Вернуть из архива' if obj.archived else 'В архив' }}</button></form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

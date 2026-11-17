@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% block title %}Первый запуск{% endblock %}
+{% block content %}
+<div class="login panel">
+  <h1>Первый запуск</h1>
+  <p class="muted">Создайте учётную запись администратора обслуживающей организации. Эта страница доступна, только пока в системе нет ни одного пользователя.</p>
+  <form method="post">{% include '_csrf.html' %}
+    <div class="field"><label>Имя</label><input type="text" name="name" required></div>
+    <div class="field"><label>Email (логин)</label><input type="email" name="email" required></div>
+    <div class="field"><label>Пароль (от 8 символов)</label><input type="password" name="password" minlength="8" required></div>
+    <button class="btn">Создать администратора</button>
+  </form>
+</div>
+{% endblock %}

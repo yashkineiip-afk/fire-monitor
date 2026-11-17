@@ -1,0 +1,20 @@
+{% from '_status.html' import level with context %}
+<div class="head">
+  <div>
+    <h1>{{ obj.name }} {% if obj.archived %}<span class="tag">в архиве</span>{% endif %}</h1>
+    <div class="muted">{{ obj.address or 'Адрес не указан' }}{% if obj.client_name %} · {{ obj.client_name }}{% endif %}</div>
+  </div>
+  <div class="actions">
+    {{ level(sm.level) }}
+    <a class="btn ghost sm" href="{{ url_for('object_report', object_id=obj.id) }}" target="_blank">Отчёт для печати</a>
+    <a class="btn ghost sm" href="{{ url_for('object_edit', object_id=obj.id) }}">Анкета</a>
+  </div>
+</div>
+<nav class="tabs">
+  <a href="{{ url_for('object_view', object_id=obj.id) }}" class="{{ 'on' if tab=='overview' }}">Обзор</a>
+  <a href="{{ url_for('object_checklist', object_id=obj.id) }}" class="{{ 'on' if tab=='checklist' }}">Чек-лист{% if sm.cl_no %}<span class="cnt">{{ sm.cl_no }}</span>{% endif %}</a>
+  <a href="{{ url_for('object_schedule', object_id=obj.id) }}" class="{{ 'on' if tab=='schedule' }}">График работ{% if sm.tasks.overdue %}<span class="cnt">{{ sm.tasks.overdue }}</span>{% endif %}</a>
+  <a href="{{ url_for('object_journal', object_id=obj.id) }}" class="{{ 'on' if tab=='journal' }}">Журнал</a>
+  <a href="{{ url_for('object_issues', object_id=obj.id) }}" class="{{ 'on' if tab=='issues' }}">Замечания и заявки{% if sm.open_issues %}<span class="cnt">{{ sm.open_issues }}</span>{% endif %}</a>
+  <a href="{{ url_for('object_files', object_id=obj.id) }}" class="{{ 'on' if tab=='files' }}">Документы</a>
+</nav>

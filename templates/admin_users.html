@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Пользователи{% endblock %}
+{% block content %}
+<h1>Пользователи</h1>
+<div class="panel">
+  <h2 style="margin-top:0">Добавить пользователя</h2>
+  <form method="post">{% include '_csrf.html' %}
+    <div class="fields">
+      <div class="field"><label>Имя *</label><input type="text" name="name" required></div>
+      <div class="field"><label>Email (логин) *</label><input type="email" name="email" required></div>
+      <div class="field"><label>Телефон</label><input type="text" name="phone"></div>
+      <div class="field"><label>Роль *</label><select name="role">
+        <option value="client">Эксплуатант (собственник / арендатор)</option>
+        <option value="engineer">Инженер обслуживающей организации</option>
+        <option value="admin">Администратор</option></select></div>
+      <div class="field"><label>Организация эксплуатанта</label><select name="client_id"><option value="">—</option>
+        {% for c in clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+        <div class="hint">Обязательно для роли «Эксплуатант» — он увидит объекты этой организации</div></div>
+      <div class="field"><label>Пароль</label><input type="text" name="password" placeholder="пусто — сгенерировать"></div>
+    </div>
+    <button class="btn">Создать</button>
+  </form>
+</div>
+<div class="tablewrap"><table class="tbl">
+  <thead><tr><th>Пользователь</th><th>Роль</th><th>Организация</th><th>Статус</th><th></th></tr></thead>
+  <tbody>
+  {% for u in users %}
+  <tr><td><b>{{ u.name }}</b><div class="small muted">{{ u.email }}{% if u.phone %} · {{ u.phone }}{% endif %}</div></td>
+    <td class="small">{{ ROLE_NAMES[u.role] }}</td><td class="small">{{ u.client_name or '—' }}</td>
+    <td>{% if u.active %}<span class="pill green">активен</span>{% else %}<span class="pill gray">отключён</span>{% endif %}</td>
+    <td class="actions">
+      <form method="post" action="{{ url_for('admin_user_toggle', user_id=u.id) }}">{% include '_csrf.html' %}<button class="btn ghost sm">{{ 'Отключить' if u.active else 'Включить' }}</button></form>
+      <form method="post" action="{{ url_for('admin_user_reset', user_id=u.id) }}" data-confirm="Сбросить пароль {{ u.email }}?">{% include '_csrf.html' %}<button class="btn ghost sm">Сбросить пароль</button></form>
+    </td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

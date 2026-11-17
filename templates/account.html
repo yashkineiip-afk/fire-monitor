@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% block title %}Профиль{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:460px">
+  <h1>{{ user.name }}</h1>
+  <p class="muted">{{ user.email }} · {{ ROLE_NAMES[user.role] }}</p>
+  <h2>Сменить пароль</h2>
+  <form method="post">{% include '_csrf.html' %}
+    <div class="field"><label>Текущий пароль</label><input type="password" name="old" required></div>
+    <div class="field"><label>Новый пароль (от 8 символов)</label><input type="password" name="new" minlength="8" required></div>
+    <button class="btn">Сохранить</button>
+  </form>
+</div>
+{% endblock %}
