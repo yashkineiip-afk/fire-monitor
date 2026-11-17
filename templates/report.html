@@ -39,7 +39,15 @@
   <td>{% if r.answer %}<span class="pill {{ {'yes':'green','no':'red','na':'gray'}[r.answer] }}">{{ ANSWERS[r.answer] }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
   <td class="small">{{ r.comment or '' }}</td></tr>{% endfor %}</table>
 
-<h2>5. Открытые замечания</h2>
+<h2>5. Регламент ТО по ГОСТ</h2>
+<table class="tbl"><tr><th>Система</th><th>Операций</th><th>Просрочено</th><th>Нет данных</th></tr>
+{% for r in regs %}<tr><td>{{ r.name }}</td><td>{{ r.ops|length }}</td><td>{{ r.overdue }}</td><td>{{ r.nodata }}</td></tr>{% else %}<tr><td colspan="4">—</td></tr>{% endfor %}</table>
+
+<h2>6. Ориентировочный бюджет на ТО систем ПЗ</h2>
+{% include '_budget_table.html' %}
+<p class="small muted">Ориентир по рыночным ценам, без ремонта и замены оборудования.</p>
+
+<h2>7. Открытые замечания</h2>
 <table class="tbl"><tr><th>Замечание</th><th>Важность</th><th>Срок</th></tr>
 {% for i in issues %}<tr><td>{{ i.title }}{% if i.description %}<div class="small muted">{{ i.description }}</div>{% endif %}</td><td>{{ SEVERITY[i.severity] }}</td><td>{{ i.due_date|ru_date }}</td></tr>
 {% else %}<tr><td colspan="3">Нет</td></tr>{% endfor %}</table>

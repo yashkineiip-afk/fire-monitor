@@ -111,3 +111,19 @@ CREATE INDEX IF NOT EXISTS idx_tasks_object ON tasks(object_id);
 CREATE INDEX IF NOT EXISTS idx_journal_object ON journal(object_id, date);
 CREATE INDEX IF NOT EXISTS idx_issues_object ON issues(object_id, status);
 CREATE INDEX IF NOT EXISTS idx_files_object ON files(object_id);
+
+-- Операции ТО, выполненные в рамках записи журнала (акт ТО)
+CREATE TABLE IF NOT EXISTS journal_ops (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    journal_id INTEGER NOT NULL REFERENCES journal(id) ON DELETE CASCADE,
+    op_code TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('ok', 'defect', 'skip')),
+    note TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_jops_journal ON journal_ops(journal_id);
+
+-- Настройки (цены для бюджета и т.п.)
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);

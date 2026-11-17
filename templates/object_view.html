@@ -11,6 +11,9 @@
   <div class="kpi yellow"><div class="v">{{ sm.tasks.soon }}</div><div class="l">работ скоро по сроку</div></div>
   <div class="kpi"><div class="v">{{ sm.tasks.nodata }}</div><div class="l">работ без данных</div></div>
   <div class="kpi {{ 'red' if sm.critical else '' }}"><div class="v">{{ sm.open_issues }}</div><div class="l">открытых замечаний</div></div>
+  {% set ro = regs|sum(attribute='overdue') %}
+  <a class="kpi {{ 'red' if ro else '' }}" href="{{ url_for('object_regulations', object_id=obj.id) }}" style="color:inherit;text-decoration:none"><div class="v">{{ ro }}</div><div class="l">операций ТО по ГОСТ просрочено</div></a>
+  <a class="kpi" href="{{ url_for('object_budget_view', object_id=obj.id) }}" style="color:inherit;text-decoration:none"><div class="v" style="font-size:1.2rem">{{ (b.year_min/1000)|round|int }}–{{ (b.year_max/1000)|round|int }} тыс. ₽</div><div class="l">бюджет ТО в год (ориентир)</div></a>
 </div>
 
 <div class="grid two">

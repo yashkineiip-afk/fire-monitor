@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Акт ТО · {{ obj.name }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>body{background:#fff} main{max-width:900px;margin:0 auto;padding:1.5rem} .tbl td,.tbl th{padding:.35rem .4rem;font-size:.86rem}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:2.5rem;font-size:.9rem}.sign div{border-top:1px solid var(--ink);padding-top:.3rem}</style></head>
+<body><main>
+<div class="actions noprint" style="margin-bottom:1rem"><button class="btn" onclick="window.print()">Печать / сохранить PDF</button>
+  <a class="btn ghost" href="{{ url_for('object_journal', object_id=obj.id) }}">← К журналу</a></div>
+<h1>Акт технического обслуживания № {{ j.id }}</h1>
+<p>от {{ j.date|ru_date }} · {{ TASKS[j.task_code].title if j.task_code in TASKS else j.work_type }}</p>
+<dl class="kv">
+  <dt>Объект</dt><dd>{{ obj.name }}, {{ obj.address or '' }}</dd>
+  <dt>Эксплуатант</dt><dd>{{ obj.client_name or '—' }}</dd>
+  <dt>Система</dt><dd>{{ SYSTEMS[j.system_code].name if j.system_code in SYSTEMS else '—' }}</dd>
+  <dt>Исполнитель</dt><dd>{{ j.performer or '' }}</dd>
+  <dt>Итог</dt><dd>{{ j.result }}</dd>
+</dl>
+<h2>Выполненные работы</h2>
+<table class="tbl"><tr><th>№</th><th>Операция</th><th>Основание</th><th>Результат</th><th>Примечание</th></tr>
+{% for o in ops %}<tr><td>{{ loop.index }}</td><td>{{ o.text }}</td><td class="small">{{ o.ref }}</td>
+  <td><span class="pill {{ {'ok':'green','defect':'red','skip':'gray'}[o.status] }}">{{ OP_STATUS[o.status] }}</span></td><td class="small">{{ o.note or '' }}</td></tr>
+{% else %}<tr><td colspan="5">{{ j.description }}</td></tr>{% endfor %}</table>
+{% if j.description %}<p class="small"><b>Комментарий:</b> {{ j.description }}</p>{% endif %}
+{% if files %}<p class="small noprint">Вложения: {% for f in files %}<a href="{{ url_for('file_download', file_id=f.id) }}">{{ f.original_name }}</a> {% endfor %}</p>{% endif %}
+<div class="sign"><div>Представитель обслуживающей организации</div><div>Представитель эксплуатанта</div></div>
+<p class="small muted" style="margin-top:2rem">Сформировано {{ now.strftime('%d.%m.%Y %H:%M') }} · «Мониторинг ПБ»</p>
+</main></body></html>

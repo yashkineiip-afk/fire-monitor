@@ -1,0 +1,13 @@
+<div class="tablewrap"><table class="tbl">
+  <thead><tr><th>Работа</th><th>Объём</th><th>Раз в год</th><th>За раз</th><th>В год</th></tr></thead>
+  <tbody>
+  {% for l in b.lines %}
+  <tr><td>{{ l.title }}{% if l.price_est %} <span class="tag">цена — оценка</span>{% endif %}</td>
+    <td class="small">{{ l.qty|int }} {{ l.unit }}{% if l.qty_est %}<div class="muted">≈ по площади — уточните в анкете</div>{% endif %}</td>
+    <td class="small">{% if l.per_year < 1 %}1 раз в {{ (1 / l.per_year)|round|int }} лет{% else %}{{ '%g'|format(l.per_year|round(1)) }}{% endif %}</td>
+    <td class="small" style="white-space:nowrap">{{ l.event_min|rub }} – {{ l.event_max|rub }}</td>
+    <td style="white-space:nowrap"><b>{{ l.year_min|rub }} – {{ l.year_max|rub }}</b></td></tr>
+  {% else %}<tr><td colspan="5" class="empty">Нет работ для оценки — заполните системы в анкете</td></tr>{% endfor %}
+  </tbody>
+  <tfoot><tr><td colspan="4"><b>Итого в год</b></td><td style="white-space:nowrap"><b>{{ b.year_min|rub }} – {{ b.year_max|rub }}</b></td></tr></tfoot>
+</table></div>

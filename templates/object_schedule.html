@@ -24,15 +24,17 @@
     <td style="white-space:nowrap">{{ tstatus(t.status) }}<div class="small muted">{{ t.next_due|ru_date if t.next_due else '' }}
       {% if t.days is not none %}{% if t.days < 0 %}({{ -t.days }} дн. назад){% else %}(через {{ t.days }} дн.){% endif %}{% endif %}</div></td>
     <td>
+      {% if t.code in has_ops %}<a class="btn sm" href="{{ url_for('task_act', object_id=obj.id, task_id=t.id) }}">Акт ТО по ГОСТ →</a>
+      <details><summary>быстрая отметка</summary>{% endif %}
       <form method="post" enctype="multipart/form-data" action="{{ url_for('task_done', object_id=obj.id, task_id=t.id) }}">{% include '_csrf.html' %}
         <div class="rowform"><input type="date" name="date" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}" required>
-          <button class="btn sm">Выполнено</button></div>
+          <button class="btn sm {{ 'ghost' if t.code in has_ops }}">Выполнено</button></div>
         <details><summary>результат, акт, примечание</summary>
           <select name="result" style="margin-top:.4rem">{% for r in RESULTS %}<option>{{ r }}</option>{% endfor %}</select>
           <input type="text" name="note" placeholder="Примечание" style="margin-top:.4rem">
           <input type="text" name="performer" placeholder="Исполнитель" style="margin-top:.4rem">
           <input type="file" name="file" style="margin-top:.4rem"></details>
-      </form>
+      </form>{% if t.code in has_ops %}</details>{% endif %}
     </td>
   </tr>
   {% else %}<tr><td colspan="6" class="empty">Работ нет — заполните системы в анкете.</td></tr>{% endfor %}

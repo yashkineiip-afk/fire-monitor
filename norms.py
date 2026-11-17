@@ -21,7 +21,7 @@
 
 NORMS_NOTE = (
     "Нормативная база: ППР в РФ (ПП РФ № 1479, действуют по 31.12.2026), "
-    "123-ФЗ, приказ МЧС № 1120, ГОСТ Р 59637-2021, ГОСТ Р 59641-2021. "
+    "123-ФЗ, приказ МЧС № 1120, ГОСТ Р 59636…59643-2021. "
     "С 2027 г. правила утверждает МЧС России — номера пунктов изменятся."
 )
 
@@ -111,6 +111,8 @@ QUESTIONNAIRE = [
             {"key": "stu", "label": "Есть специальные технические условия (СТУ)", "type": "bool"},
             {"key": "facade_banners", "label": "На фасаде есть баннеры, транспаранты, конструкции", "type": "bool"},
             {"key": "smoking_place", "label": "Есть отведённое место для курения", "type": "bool"},
+            {"key": "price_coef", "label": "Поправочный коэффициент к ценам ТО", "type": "number",
+             "hint": "1 — цены Москвы; для регионов обычно 0,6–0,9; для сложных объектов — больше 1"},
             {"key": "notes", "label": "Примечания", "type": "textarea"},
         ],
     },
@@ -134,15 +136,19 @@ SYSTEMS = {
     "soue": {"name": "Система оповещения и управления эвакуацией (СОУЭ)", "spz": True, "fields": [
         {"key": "type", "label": "Тип СОУЭ", "type": "select", "options": ["1", "2", "3", "4", "5"]},
         {"key": "brand", "label": "Оборудование", "type": "text"},
+        {"key": "units", "label": "Кол-во оповещателей", "type": "number"},
     ] + LIFE_FIELDS},
     "aupt": {"name": "Автоматическая установка пожаротушения (АУПТ)", "spz": True, "fields": [
         {"key": "kind", "label": "Вид", "type": "select",
          "options": ["Водяное спринклерное", "Водяное дренчерное", "Тонкораспылённая вода",
                      "Газовое", "Порошковое", "Аэрозольное", "Пенное"]},
         {"key": "rooms", "label": "Защищаемые помещения", "type": "text"},
+        {"key": "area", "label": "Защищаемая площадь, м²", "type": "number"},
+        {"key": "modules", "label": "Кол-во модулей / баллонов (газ, порошок, аэрозоль)", "type": "number"},
     ] + LIFE_FIELDS},
     "smoke": {"name": "Противодымная вентиляция (дымоудаление, подпор)", "spz": True, "fields": [
         {"key": "kind", "label": "Состав", "type": "text", "hint": "дымоудаление, подпор, клапаны"},
+        {"key": "units", "label": "Кол-во вентиляторов и клапанов", "type": "number"},
     ] + LIFE_FIELDS},
     "monitoring": {"name": "Вывод сигнала на пульт пожарной охраны (ПАК)", "spz": True, "fields": [
         {"key": "brand", "label": "Оборудование / оператор", "type": "text",
@@ -173,6 +179,7 @@ SYSTEMS = {
     "fireproof": {"name": "Огнезащитная обработка конструкций", "spz": False, "fields": [
         {"key": "what", "label": "Что обработано", "type": "text", "hint": "металлоконструкции, деревянная кровля..."},
         {"key": "agent", "label": "Огнезащитный состав", "type": "text"},
+        {"key": "area", "label": "Площадь обработки, м²", "type": "number"},
         {"key": "year", "label": "Год обработки", "type": "number"},
         {"key": "life", "label": "Срок службы покрытия, лет", "type": "number"},
     ]},
@@ -181,6 +188,7 @@ SYSTEMS = {
     ]},
     "ventilation": {"name": "Общеобменная вентиляция", "spz": False, "fields": [
         {"key": "ozk", "label": "Есть огнезадерживающие клапаны", "type": "bool"},
+        {"key": "ozk_count", "label": "Кол-во огнезадерживающих клапанов", "type": "number"},
     ]},
     "stove": {"name": "Печное отопление / кухонные плиты на твёрдом топливе", "spz": False, "fields": [
         {"key": "continuous", "label": "Непрерывная топка", "type": "bool"},
@@ -270,6 +278,9 @@ TASKS = [
      "period": 12, "side": "provider", "ref": "ППР п. 54",
      "hint": "Система определяет по году ввода и сроку службы из анкеты",
      "applies": lambda p, s, y: bool(over_service_life(s, y))},
+    {"code": "vpv_to", "title": "Регламентное ТО ВПВ (осмотр, запорная арматура, приборы)",
+     "period": 1, "side": "provider", "ref": "ППР п. 54, ГОСТ Р 59643-2021", "system": "vpv",
+     "applies": lambda p, s, y: has(s, "vpv")},
     {"code": "vpv_check", "title": "Проверка работоспособности ВПВ с актом (весна и осень)",
      "period": 6, "side": "provider", "ref": "ППР п. 50", "system": "vpv",
      "applies": lambda p, s, y: has(s, "vpv")},

@@ -117,3 +117,65 @@ def test_full_flow():
 if __name__ == "__main__":
     test_full_flow()
     print("OK")
+
+
+def test_act_budget_prices():
+    c = app.test_client()
+    login(c, "boss@firm.ru", "secret123")
+    with app.app_context():
+        db = appmod.get_db()
+        oid = db.execute("SELECT id FROM objects WHERE name='ТЦ Тест'").fetchone()["id"]
+        tid = db.execute("SELECT id FROM tasks WHERE object_id=? AND code='aps_to'", (oid,)).fetchone()["id"]
+    page = c.get(f"/objects/{oid}/tasks/{tid}/act").get_data(as_text=True)
+    assert "Комплексные испытания" in page and "ГОСТ Р 59638-2021" in page
+    t = csrf(c, f"/objects/{oid}/tasks/{tid}/act")
+    r = c.post(f"/objects/{oid}/tasks/{tid}/act", data={
+        "csrf": t, "date": "2026-11-01", "st_aps_ppkp_insp": "ok", "st_aps_ibe_func": "defect",
+        "n_aps_ibe_func": "АКБ 11,9 В", "st_aps_complex": "ok", "st_aps_io": "skip"})
+    assert r.status_code == 302 and "/act" in r.headers["Location"]
+    act = c.get(r.headers["Location"]).get_data(as_text=True)
+    assert "АКБ 11,9 В" in act and "Комплексные испытания" in act
+    regs = c.get(f"/objects/{oid}/regulations").get_data(as_text=True)
+    assert "01.11.2026" in regs and "ГОСТ Р 59643-2021" in regs
+    assert "АКБ 11,9 В" in c.get(f"/objects/{oid}/issues").get_data(as_text=True)
+    assert c.get(f"/objects/{oid}/journal").status_code == 200
+    # операция «водоотдача» в акте ВПВ засчитывает работу «Проверка ВПВ»
+    with app.app_context():
+        db = appmod.get_db()
+        tv = db.execute("SELECT id FROM tasks WHERE object_id=? AND code='vpv_to'", (oid,)).fetchone()["id"]
+    t = csrf(c, f"/objects/{oid}/tasks/{tv}/act")
+    c.post(f"/objects/{oid}/tasks/{tv}/act", data={"csrf": t, "date": "2026-11-02", "st_vpv_water": "ok",
+                                                   "st_vpv_month": "ok"})
+    with app.app_context():
+        last = appmod.get_db().execute("SELECT last_done FROM tasks WHERE object_id=? AND code='vpv_check'",
+                                       (oid,)).fetchone()["last_done"]
+    assert last == "2026-11-02"
+    # бюджет
+    b = c.get(f"/objects/{oid}/budget").get_data(as_text=True)
+    assert "ТО пожарной сигнализации" in b and "Итого в год" in b and "₽" in b
+    with app.app_context():
+        obj = appmod.get_db().execute("SELECT * FROM objects WHERE id=?", (oid,)).fetchone()
+        with app.test_request_context():
+            appmod.g.user = None
+            bud1 = appmod.object_budget(obj)
+    assert bud1["year_min"] > 0 and bud1["year_max"] > bud1["year_min"]
+    # цены: коэффициент 2 удваивает бюджет
+    t = csrf(c, "/prices")
+    c.post("/prices", data={"csrf": t, "coef": "2"})
+    with app.app_context():
+        obj = appmod.get_db().execute("SELECT * FROM objects WHERE id=?", (oid,)).fetchone()
+        with app.test_request_context():
+            bud2 = appmod.object_budget(obj)
+    assert abs(bud2["year_min"] - 2 * bud1["year_min"]) < 1
+    for url in [f"/objects/{oid}", f"/objects/{oid}/report", "/prices", f"/objects/{oid}/schedule"]:
+        assert c.get(url).status_code == 200, url
+    # эксплуатант видит бюджет
+    c2 = app.test_client()
+    login(c2, "rent@x.ru", "rentpass1")
+    assert c2.get(f"/objects/{oid}/budget").status_code == 200
+    assert c2.get("/prices").status_code == 403
+
+
+if __name__ == "__main__":
+    test_act_budget_prices()
+    print("OK2")

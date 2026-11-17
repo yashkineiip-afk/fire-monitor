@@ -1,0 +1,1 @@
+{% macro opill(st) %}<span class="pill {{ {'overdue':'red','soon':'yellow','ok':'green','nodata':'gray','info':'gray'}[st] }}">{{ {'overdue':'Просрочено','soon':'Скоро','ok':'В норме','nodata':'Нет данных','info':'По ТД'}[st] }}</span>{% endmacro %}

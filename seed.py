@@ -26,22 +26,21 @@ def run(db):
                 "has_prod_storage": False, "categories": "", "categories_ab": False, "declaration": "Да",
                 "risk_calc": False, "stu": False, "facade_banners": True, "smoking_place": True, "notes": ""}
     office_s = {"aps": {"kind": "Адресная", "brand": "Рубеж-2ОП", "detectors": "840", "year": "2012", "life": "10"},
-                "soue": {"type": "3", "brand": "Соната", "year": "2012", "life": "10"},
-                "smoke": {"kind": "дымоудаление, подпор", "year": "2012", "life": "15"},
+                "soue": {"type": "3", "brand": "Соната", "units": "160", "year": "2012", "life": "10"},
+                "smoke": {"kind": "дымоудаление, подпор", "units": "26", "year": "2012", "life": "15"},
                 "vpv": {"cranes": "36"}, "pumps": {"units": "2"},
                 "outer_water": {"kind": "Пожарные гидранты", "count": "2", "distance": "80"},
                 "extinguishers": {"count": "120", "types": "ОП-4, ОУ-3"}, "fire_doors": {"count": "48"},
-                "emergency_light": {"count": "210"}, "ventilation": {"ozk": True}}
+                "emergency_light": {"count": "210"}, "ventilation": {"ozk": True, "ozk_count": "14"}}
     whs_p = {"purpose": "Склад непродовольственных товаров", "usage_right": "Арендатор",
              "responsible_name": "Сидоров П. П.", "fclass": "Ф5.2 — Складские здания, стоянки, архивы, книгохранилища",
              "floors": "1", "height_m": "12", "area_m2": "4800", "fire_resistance": "IV", "constr_class": "С0",
              "year_built": "2018", "max_people": "25", "has_prod_storage": True, "categories": "В2, В3",
              "declaration": "Не знаю", "smoking_place": True}
     whs_s = {"aps": {"kind": "Адресно-аналоговая", "year": "2018", "life": "10"},
-             "aupt": {"kind": "Водяное спринклерное", "rooms": "складской зал", "year": "2018", "life": "10"},
+             "aupt": {"kind": "Водяное спринклерное", "rooms": "складской зал", "area": "4200", "year": "2018", "life": "10"},
              "soue": {"type": "2", "year": "2018", "life": "10"},
-             "extinguishers": {"count": "30", "types": "ОП-5"}, "fireproof": {"what": "металлоконструкции",
-                                                                                  "year": "2018", "life": "10"},
+             "extinguishers": {"count": "30", "types": "ОП-5"}, "fireproof": {"what": "металлоконструкции", "area": "2600", "year": "2018", "life": "10"},
              "ladders": {"count": "2"}}
     oid1 = db.execute("INSERT INTO objects (client_id, name, address, profile, systems) VALUES (?,?,?,?,?)",
                       (cid, "БЦ «Север», корпус А", "г. Москва, ул. Примерная, д. 1",
@@ -71,6 +70,17 @@ def run(db):
                     (20, "yes"), (29, "yes"), (13, "no")]:
         db.execute("INSERT INTO checklist (object_id, item_no, answer, updated_at) VALUES (?,?,?,datetime('now'))",
                    (oid1, no, ans))
+    # акт ТО АПС с операциями по ГОСТ
+    d = (t - timedelta(days=20)).isoformat()
+    jid = db.execute("INSERT INTO journal (object_id, date, task_code, system_code, work_type, description, result, performer) "
+                     "VALUES (?,?,?,?,?,?,?,?)", (oid1, d, "aps_to", "aps", "Техническое обслуживание",
+                     "Регламентное ТО АПС: выполнено операций — 4, неисправностей — 1", "Выполнено с замечаниями",
+                     "Инженер Петров")).lastrowid
+    for code, st, note in [("aps_ppkp_insp", "ok", ""), ("aps_ibe_insp", "ok", ""), ("aps_ppkp_func", "ok", ""),
+                           ("aps_ibe_func", "defect", "АКБ 12 В: 12,4 В — требуется замена")]:
+        db.execute("INSERT INTO journal_ops (journal_id, op_code, status, note) VALUES (?,?,?,?)", (jid, code, st, note))
+    db.execute("INSERT INTO issues (object_id, title, description, severity, journal_id) VALUES (?,?,?,?,?)",
+               (oid1, "АПС: замена АКБ в ИБЭ", "АКБ 12 В: 12,4 В", "medium", jid))
     db.execute("INSERT INTO issues (object_id, title, description, severity, checklist_no) VALUES (?,?,?,?,?)",
                (oid1, "Чек-лист п. 16: не заделаны кабельные проходки на 3 этаже", "Кабельный лоток у лифтового холла",
                 "medium", 16))

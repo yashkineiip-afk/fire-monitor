@@ -33,7 +33,9 @@
   {% for j in entries %}
   <tr class="row-{{ 'red' if j.result=='Неисправно' else 'yellow' if j.result=='Выполнено с замечаниями' else '' }}">
     <td style="white-space:nowrap">{{ j.date|ru_date }}</td>
-    <td>{{ j.work_type }}{% if j.task_code and j.task_code in TASKS %} <span class="tag">по графику</span>{% endif %}<div class="small">{{ j.description or '' }}</div></td>
+    <td>{{ j.work_type }}{% if j.task_code and j.task_code in TASKS %} <span class="tag">по графику</span>{% endif %}<div class="small">{{ j.description or '' }}</div>
+      {% if ops_by_j.get(j.id) %}<details><summary>операции ({{ ops_by_j[j.id]|length }}) · <a href="{{ url_for('journal_act', journal_id=j.id) }}" target="_blank">акт</a></summary>
+        <ul class="small" style="margin:.3rem 0;padding-left:1.1rem">{% for o in ops_by_j[j.id] %}<li><span class="pill {{ {'ok':'green','defect':'red','skip':'gray'}[o.status] }}">{{ OP_STATUS[o.status] }}</span> {{ o.text }}{% if o.note %} — <i>{{ o.note }}</i>{% endif %}</li>{% endfor %}</ul></details>{% endif %}</td>
     <td class="small">{{ SYSTEMS[j.system_code].name if j.system_code in SYSTEMS else '—' }}</td>
     <td class="small">{{ j.result }}</td>
     <td class="small">{{ j.performer or '' }}<div class="muted">внёс: {{ j.author or 'система' }}</div></td>

@@ -15,6 +15,7 @@
     <a href="{{ url_for('plan') }}" class="{{ 'on' if request.endpoint=='plan' }}">План-график</a>
     <a href="{{ url_for('all_issues') }}" class="{{ 'on' if request.endpoint=='all_issues' }}">{{ 'Замечания и заявки' if is_provider() else 'Заявки и замечания' }}</a>
     {% if is_provider() %}<a href="{{ url_for('admin_clients') }}" class="{{ 'on' if request.endpoint=='admin_clients' }}">Эксплуатанты</a>{% endif %}
+    {% if is_provider() %}<a href="{{ url_for('prices') }}" class="{{ 'on' if request.endpoint=='prices' }}">Цены</a>{% endif %}
     {% if user.role == 'admin' %}<a href="{{ url_for('admin_users') }}" class="{{ 'on' if request.endpoint=='admin_users' }}">Пользователи</a>{% endif %}
   </nav>
   <div class="who">

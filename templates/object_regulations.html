@@ -1,0 +1,18 @@
+{% extends 'base.html' %}{% from '_opmacros.html' import opill %}
+{% block title %}Регламент ТО · {{ obj.name }}{% endblock %}
+{% block content %}
+{% include '_object_head.html' %}
+<p class="muted small">Что конкретно должно выполняться с каждой системой по ГОСТ Р 59636…59643-2021 и ППР, когда это делали последний раз и когда срок. Отметки ставятся через «Акт ТО» на вкладке «График работ».</p>
+{% for r in regs %}
+<div class="panel">
+  <div class="head" style="margin-bottom:.4rem"><h2 style="margin:0">{{ r.name }}</h2>
+    <div class="actions">{% if r.overdue %}<span class="pill red">просрочено {{ r.overdue }}</span>{% endif %}{% if r.nodata %}<span class="pill gray">нет данных {{ r.nodata }}</span>{% endif %}
+    {% for t in task_by_system.get(r.system, [])[:1] %}<a class="btn sm" href="{{ url_for('task_act', object_id=obj.id, task_id=t.id) }}">Заполнить акт ТО</a>{% endfor %}</div></div>
+  <table class="tbl">
+    <thead><tr><th>Операция</th><th>Периодичность</th><th>Последний раз</th><th>Срок</th><th>Статус</th></tr></thead>
+    {% for o in r.ops %}<tr><td>{{ o.text }}<div class="small muted">{{ o.ref }}</div></td><td class="small">{{ o.period_label }}</td>
+      <td class="small">{{ o.last|ru_date }}</td><td class="small">{{ o.due|ru_date if o.due else '—' }}</td><td>{{ opill(o.status) }}</td></tr>{% endfor %}
+  </table>
+</div>
+{% else %}<div class="panel empty">Нет систем с регламентом ТО. Отметьте системы в анкете.</div>{% endfor %}
+{% endblock %}

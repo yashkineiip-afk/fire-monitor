@@ -14,7 +14,9 @@
   <a href="{{ url_for('object_view', object_id=obj.id) }}" class="{{ 'on' if tab=='overview' }}">Обзор</a>
   <a href="{{ url_for('object_checklist', object_id=obj.id) }}" class="{{ 'on' if tab=='checklist' }}">Чек-лист{% if sm.cl_no %}<span class="cnt">{{ sm.cl_no }}</span>{% endif %}</a>
   <a href="{{ url_for('object_schedule', object_id=obj.id) }}" class="{{ 'on' if tab=='schedule' }}">График работ{% if sm.tasks.overdue %}<span class="cnt">{{ sm.tasks.overdue }}</span>{% endif %}</a>
+  <a href="{{ url_for('object_regulations', object_id=obj.id) }}" class="{{ 'on' if tab=='regulations' }}">Регламент ТО</a>
   <a href="{{ url_for('object_journal', object_id=obj.id) }}" class="{{ 'on' if tab=='journal' }}">Журнал</a>
   <a href="{{ url_for('object_issues', object_id=obj.id) }}" class="{{ 'on' if tab=='issues' }}">Замечания и заявки{% if sm.open_issues %}<span class="cnt">{{ sm.open_issues }}</span>{% endif %}</a>
+  <a href="{{ url_for('object_budget_view', object_id=obj.id) }}" class="{{ 'on' if tab=='budget' }}">Бюджет</a>
   <a href="{{ url_for('object_files', object_id=obj.id) }}" class="{{ 'on' if tab=='files' }}">Документы</a>
 </nav>

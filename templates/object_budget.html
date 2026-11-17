@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Бюджет · {{ obj.name }}{% endblock %}
+{% block content %}
+{% include '_object_head.html' %}
+<div class="grid k" style="margin-bottom:1rem">
+  <div class="kpi"><div class="v" style="font-size:1.35rem">{{ b.year_min|rub }} – {{ b.year_max|rub }}</div><div class="l">ориентировочно в год</div></div>
+  <div class="kpi"><div class="v" style="font-size:1.35rem">≈ {{ ((b.year_min + b.year_max) / 2)|rub }}</div><div class="l">середина диапазона в год</div></div>
+  <div class="kpi"><div class="v" style="font-size:1.35rem">{{ b.month_min|rub }} – {{ b.month_max|rub }}</div><div class="l">в среднем в месяц</div></div>
+  <div class="kpi"><div class="v" style="font-size:1.35rem">× {{ '%g'|format(b.coef) }}</div><div class="l">поправочный коэффициент (анкета × общий)</div></div>
+</div>
+{% include '_budget_table.html' %}
+{% if b.skipped %}<div class="panel small"><b>Не входит в оценку:</b>
+  <ul style="margin:.4rem 0 0;padding-left:1.1rem">{% for x in b.skipped %}<li>{{ x.title }} — <span class="muted">{{ x.reason }}</span></li>{% endfor %}</ul></div>{% endif %}
+<p class="small muted">{{ NOTE }} Периодичность берётся из графика работ объекта. {% if is_provider() %}<a href="{{ url_for('prices') }}">Изменить цены</a>{% endif %}</p>
+{% endblock %}

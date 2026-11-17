@@ -1,0 +1,32 @@
+{% extends 'base.html' %}{% from '_opmacros.html' import opill %}
+{% block title %}Акт ТО · {{ obj.name }}{% endblock %}
+{% block content %}
+{% include '_object_head.html' %}
+<h2 style="margin-top:0">Акт ТО: {{ task.title }}</h2>
+<p class="muted small">Перечень операций по ГОСТ для этой системы. Система отметила к выполнению те, по которым подошёл или прошёл срок. Для каждой укажите результат: «Норма», «Неисправность» (создаст замечание) или «Не выполнялось».</p>
+<form method="post" enctype="multipart/form-data" class="panel">{% include '_csrf.html' %}
+  <div class="fields">
+    <div class="field"><label>Дата</label><input type="date" name="date" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}" required></div>
+    <div class="field"><label>Исполнитель</label><input type="text" name="performer" placeholder="{{ user.name }}"></div>
+  </div>
+  <div class="tablewrap"><table class="tbl">
+    <thead><tr><th>Операция</th><th>Периодичность</th><th>Последний раз</th><th>Результат</th></tr></thead>
+    <tbody>
+    {% for o in ops %}{% set pre = 'ok' if o.status in ['overdue','soon','nodata'] else 'skip' %}
+    <tr class="row-{{ 'red' if o.status=='overdue' else 'yellow' if o.status=='soon' else '' }}">
+      <td>{{ o.text }}<div class="small muted">{{ o.ref }}</div></td>
+      <td class="small">{{ o.period_label }}</td>
+      <td class="small">{{ o.last|ru_date }}<div>{{ opill(o.status) }}</div></td>
+      <td style="min-width:230px"><div class="opans">
+        {% for k, v in [('ok','Норма'),('defect','Неиспр.'),('skip','Не вып.')] %}<label class="op-{{ k }}"><input type="radio" name="st_{{ o.code }}" value="{{ k }}" {{ 'checked' if pre==k }}><span>{{ v }}</span></label>{% endfor %}
+      </div><input type="text" name="n_{{ o.code }}" placeholder="Замечание / замер" style="margin-top:.3rem"></td>
+    </tr>{% endfor %}
+    </tbody></table></div>
+  <div class="fields">
+    <div class="field" style="grid-column:1/-1"><label>Общий комментарий</label><textarea name="note"></textarea></div>
+    <div class="field"><label>Скан акта / фото</label><input type="file" name="file"></div>
+  </div>
+  <button class="btn">Сохранить акт</button>
+  <a class="btn ghost" href="{{ url_for('object_schedule', object_id=obj.id) }}">Отмена</a>
+</form>
+{% endblock %}

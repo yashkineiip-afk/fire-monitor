@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Цены на ТО{% endblock %}
+{% block content %}
+<h1>Цены для расчёта бюджета</h1>
+<p class="muted">{{ NOTE }}</p>
+<form method="post" class="panel">{% include '_csrf.html' %}
+  <div class="field" style="max-width:320px"><label>Общий коэффициент (регион, НДС, ваша наценка)</label>
+    <input type="number" step="0.01" name="coef" value="{{ coef }}" {{ 'disabled' if user.role!='admin' }}></div>
+  <div class="tablewrap"><table class="tbl">
+    <thead><tr><th>Работа</th><th>Расчёт</th><th>Цена от, ₽</th><th>Цена до, ₽</th></tr></thead>
+    {% for it in items %}
+    <tr><td><b>{{ it.title }}</b>{% if it.est %} <span class="tag">оценка</span>{% endif %}</td>
+      {% if it.kind in ['unit','fixed'] %}
+      <td class="small">{{ 'за единицу (' ~ it.unit ~ ')' if it.kind=='unit' else 'за выполнение' }}{% if it.min_charge %}<div class="muted">мин. {{ it.min_charge[0] }}–{{ it.min_charge[1] }} ₽ за выезд</div>{% endif %}</td>
+      <td><input type="number" step="any" name="min_{{ it.code }}" value="{{ it.min }}" style="width:110px" {{ 'disabled' if user.role!='admin' }}></td>
+      <td><input type="number" step="any" name="max_{{ it.code }}" value="{{ it.max }}" style="width:110px" {{ 'disabled' if user.role!='admin' }}></td>
+      {% else %}
+      <td class="small">{% if it.kind=='tier' %}абонентская плата по ступеням ({{ it.unit }}):
+        {% for t in it.tiers %}до {{ t[0] }} — {{ t[1] }}–{{ t[2] }} ₽{{ '; ' if not loop.last }}{% endfor %}
+        {% else %}до {{ it.upto }} м² — {{ it.base[0] }}–{{ it.base[1] }} ₽, далее +{{ it.extra[0] }}–{{ it.extra[1] }} ₽ за {{ it.step }} м²{% endif %}</td>
+      <td colspan="2"><label class="small">Множитель</label><input type="number" step="0.01" name="mult_{{ it.code }}" value="{{ it.mult }}" style="width:110px" {{ 'disabled' if user.role!='admin' }}></td>
+      {% endif %}</tr>
+    {% endfor %}
+  </table></div>
+  {% if user.role=='admin' %}<button class="btn">Сохранить цены</button>{% else %}<p class="small muted">Менять цены может администратор.</p>{% endif %}
+</form>
+{% endblock %}

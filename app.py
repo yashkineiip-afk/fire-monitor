@@ -7,7 +7,6 @@
 
 Запуск локально:  python app.py   →  http://127.0.0.1:5000
 """
-import calendar
 import json
 import os
 import secrets
@@ -21,7 +20,9 @@ from flask import (Flask, abort, flash, g, redirect, render_template, request,
                    send_from_directory, session, url_for)
 from werkzeug.security import check_password_hash, generate_password_hash
 
+import maintenance as mt
 import norms
+from app_utils import add_months
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("DATA_DIR", os.path.join(BASE_DIR, "data"))
@@ -193,12 +194,6 @@ def period_label(months):
 # ==========================================================================
 # Доменная логика
 # ==========================================================================
-def add_months(d, months):
-    m = d.month - 1 + months
-    y, m = d.year + m // 12, m % 12 + 1
-    return date(y, m, min(d.day, calendar.monthrange(y, m)[1]))
-
-
 def parse_date(s):
     try:
         return datetime.strptime(s, "%Y-%m-%d").date()
@@ -586,7 +581,8 @@ def object_view(object_id):
                          (object_id,)).fetchall()
     return render_template("object_view.html", obj=obj, p=p, s=s, sm=object_summary(obj), tasks=tasks,
                            issues=issues, journal=journal, SYSTEMS=norms.SYSTEMS, TASKS=norms.TASKS_BY_CODE,
-                           warnings=norms.warnings(p, s, date.today().year), tab="overview")
+                           warnings=norms.warnings(p, s, date.today().year), tab="overview",
+                           b=object_budget(obj), regs=regulations(obj))
 
 
 # ==========================================================================
@@ -633,7 +629,9 @@ def object_checklist(object_id):
 @login_required
 def object_schedule(object_id):
     obj = get_object(object_id)
-    return render_template("object_schedule.html", obj=obj, tasks=task_rows(object_id), SYSTEMS=norms.SYSTEMS,
+    p, s = obj_data(obj)
+    has_ops = {t["code"] for t in task_rows(object_id) if mt.ops_for_task(t["code"], s)[1]}
+    return render_template("object_schedule.html", obj=obj, tasks=task_rows(object_id), SYSTEMS=norms.SYSTEMS, has_ops=has_ops,
                            RESULTS=RESULTS, sm=object_summary(obj), tab="schedule")
 
 
@@ -734,7 +732,13 @@ def object_journal(object_id):
     for f in db.execute("SELECT * FROM files WHERE object_id=? AND link_type='journal'", (object_id,)):
         files.setdefault(f["link_id"], []).append(f)
     tasks = task_rows(object_id)
-    return render_template("object_journal.html", obj=obj, entries=entries, files=files, s=s, tasks=tasks,
+    ops_by_j = {}
+    texts = {c: t for ops in mt.OPS.values() for c, t, _, _ in ops}
+    for r in db.execute("SELECT jo.* FROM journal_ops jo JOIN journal j ON j.id=jo.journal_id WHERE j.object_id=?",
+                        (object_id,)):
+        ops_by_j.setdefault(r["journal_id"], []).append(dict(text=texts.get(r["op_code"], r["op_code"]),
+                                                             status=r["status"], note=r["note"]))
+    return render_template("object_journal.html", ops_by_j=ops_by_j, OP_STATUS=OP_STATUS, obj=obj, entries=entries, files=files, s=s, tasks=tasks,
                            SYSTEMS=norms.SYSTEMS, TASKS=norms.TASKS_BY_CODE, WORK_TYPES=WORK_TYPES,
                            RESULTS=RESULTS, sys_f=sys_f, sm=object_summary(obj), tab="journal")
 
@@ -854,8 +858,187 @@ def object_report(object_id):
                               (object_id,)).fetchall()
     return render_template("report.html", obj=obj, p=p, s=s, sm=object_summary(obj), tasks=task_rows(object_id),
                            cl=checklist_rows(obj), issues=issues, SYSTEMS=norms.SYSTEMS, Q=norms.QUESTIONNAIRE,
-                           warnings=norms.warnings(p, s, date.today().year), now=datetime.now())
+                           warnings=norms.warnings(p, s, date.today().year), now=datetime.now(),
+                           b=object_budget(obj), regs=regulations(obj))
 
+
+
+# ==========================================================================
+# Регламент ТО по ГОСТ: акты с перечнем операций
+# ==========================================================================
+OP_STATUS = {"ok": "Выполнено, норма", "defect": "Выявлена неисправность", "skip": "Не выполнялось"}
+
+
+def ops_last_done(object_id):
+    rows = get_db().execute(
+        "SELECT jo.op_code, MAX(j.date) d FROM journal_ops jo JOIN journal j ON j.id=jo.journal_id "
+        "WHERE j.object_id=? AND jo.status IN ('ok','defect') GROUP BY jo.op_code", (object_id,))
+    return {r["op_code"]: r["d"] for r in rows}
+
+
+def regulations(obj):
+    """Все перечни операций по системам объекта со статусами."""
+    p, s = obj_data(obj)
+    last = ops_last_done(obj["id"])
+    out = []
+    seen = set()
+    for code in s:
+        if code not in norms.SYSTEMS:
+            continue
+        key = mt.ops_key(code, s)
+        if key in seen or key not in mt.OPS:
+            continue
+        seen.add(key)
+        rows = mt.ops_status(mt.OPS[key], last)
+        out.append(dict(system=code, key=key, name=norms.SYSTEMS[code]["name"], ops=rows,
+                        overdue=sum(1 for r in rows if r["status"] == "overdue"),
+                        nodata=sum(1 for r in rows if r["status"] == "nodata")))
+    return out
+
+
+def price_settings():
+    row = get_db().execute("SELECT value FROM settings WHERE key='prices'").fetchone()
+    return json.loads(row["value"]) if row else {"coef": 1.0, "items": {}}
+
+
+def object_budget(obj):
+    p, s = obj_data(obj)
+    ps = price_settings()
+    old = len(norms.over_service_life(s, date.today().year))
+    return mt.budget(p, s, task_rows(obj["id"]), ps.get("items"), ps.get("coef", 1.0), old)
+
+
+@app.template_filter("rub")
+def rub(v):
+    return f"{round(v):,}".replace(",", " ") + " ₽"
+
+
+@app.route("/objects/<int:object_id>/tasks/<int:task_id>/act", methods=["GET", "POST"])
+@login_required
+def task_act(object_id, task_id):
+    obj = get_object(object_id)
+    db = get_db()
+    p, s = obj_data(obj)
+    row = db.execute("SELECT * FROM tasks WHERE id=? AND object_id=?", (task_id, object_id)).fetchone() or abort(404)
+    t = norms.TASKS_BY_CODE[row["code"]]
+    key, ops = mt.ops_for_task(row["code"], s)
+    if not ops:
+        return redirect(url_for("object_schedule", object_id=object_id))
+    statuses = mt.ops_status(ops, ops_last_done(object_id))
+    if request.method == "POST":
+        d = request.form.get("date") or date.today().isoformat()
+        if not parse_date(d) or parse_date(d) > date.today():
+            flash("Дата не может быть в будущем", "error")
+            return redirect(request.path)
+        marks = {}
+        for code, text, per, ref in ops:
+            st = request.form.get("st_" + code)
+            if st in OP_STATUS:
+                marks[code] = (st, request.form.get("n_" + code, "").strip(), text)
+        done = [c for c, v in marks.items() if v[0] != "skip"]
+        if not done:
+            flash("Отметьте хотя бы одну выполненную операцию", "error")
+            return redirect(request.path)
+        defects = [c for c, v in marks.items() if v[0] == "defect"]
+        result = RESULTS[1] if defects else RESULTS[0]
+        summary = f"{t['title']}: выполнено операций — {len(done)}" + (f", неисправностей — {len(defects)}" if defects else "")
+        if request.form.get("note", "").strip():
+            summary += ". " + request.form["note"].strip()
+        cur = db.execute(
+            "INSERT INTO journal (object_id, date, task_code, system_code, work_type, description, result, performer, "
+            "created_by) VALUES (?,?,?,?,?,?,?,?,?)",
+            (object_id, d, row["code"], t.get("system"), "Техническое обслуживание", summary, result,
+             request.form.get("performer", "").strip() or g.user["name"], g.user["id"]))
+        jid = cur.lastrowid
+        for code, (st, note, text) in marks.items():
+            db.execute("INSERT INTO journal_ops (journal_id, op_code, status, note) VALUES (?,?,?,?)",
+                       (jid, code, st, note))
+            if st == "defect":
+                sysname = norms.SYSTEMS.get(t.get("system"), {}).get("name", "")
+                add_issue(object_id, f"{sysname}: {text[:150]}", note, "medium", journal_id=jid)
+            if st != "skip" and mt.OP_TASK.get(code):
+                mark_task_done(object_id, mt.OP_TASK[code], d)
+        mark_task_done(object_id, row["code"], d)
+        save_upload(request.files.get("file"), object_id, "Акт", "journal", jid)
+        db.commit()
+        flash(f"Акт ТО сохранён: {len(done)} операций" + (f", замечаний: {len(defects)}" if defects else ""), "ok")
+        return redirect(url_for("journal_act", journal_id=jid))
+    return render_template("task_act.html", obj=obj, task=t, row=row, ops=statuses, OP_STATUS=OP_STATUS,
+                           sm=object_summary(obj), tab="schedule")
+
+
+@app.route("/journal/<int:journal_id>/act")
+@login_required
+def journal_act(journal_id):
+    db = get_db()
+    j = db.execute("SELECT j.*, u.name AS author FROM journal j LEFT JOIN users u ON u.id=j.created_by WHERE j.id=?",
+                   (journal_id,)).fetchone() or abort(404)
+    obj = get_object(j["object_id"])
+    p, s = obj_data(obj)
+    texts = {}
+    for key, ops in mt.OPS.items():
+        for code, text, per, ref in ops:
+            texts[code] = (text, ref)
+    ops = [dict(code=r["op_code"], status=r["status"], note=r["note"], text=texts.get(r["op_code"], (r["op_code"], ""))[0],
+                ref=texts.get(r["op_code"], ("", ""))[1])
+           for r in db.execute("SELECT * FROM journal_ops WHERE journal_id=? ORDER BY id", (journal_id,))]
+    files = db.execute("SELECT * FROM files WHERE link_type='journal' AND link_id=?", (journal_id,)).fetchall()
+    return render_template("act_print.html", obj=obj, j=j, ops=ops, files=files, OP_STATUS=OP_STATUS,
+                           TASKS=norms.TASKS_BY_CODE, SYSTEMS=norms.SYSTEMS, now=datetime.now())
+
+
+@app.route("/objects/<int:object_id>/regulations")
+@login_required
+def object_regulations(object_id):
+    obj = get_object(object_id)
+    task_by_system = {}
+    for t in task_rows(object_id):
+        sc = mt.TASK_OPS.get(t["code"])
+        if sc:
+            task_by_system.setdefault(sc, []).append(t)
+    return render_template("object_regulations.html", obj=obj, regs=regulations(obj), task_by_system=task_by_system,
+                           sm=object_summary(obj), tab="regulations")
+
+
+@app.route("/objects/<int:object_id>/budget")
+@login_required
+def object_budget_view(object_id):
+    obj = get_object(object_id)
+    return render_template("object_budget.html", obj=obj, b=object_budget(obj), NOTE=mt.PRICES_NOTE,
+                           sm=object_summary(obj), tab="budget")
+
+
+@app.route("/prices", methods=["GET", "POST"])
+@roles("admin", "engineer")
+def prices():
+    ps = price_settings()
+    if request.method == "POST":
+        if g.user["role"] != "admin":
+            abort(403)
+        items = {}
+        for it in mt.PRICES:
+            c = it["code"]
+            ov = {}
+            for f in ("min", "max", "mult"):
+                v = request.form.get(f"{f}_{c}", "").replace(",", ".").strip()
+                try:
+                    ov[f] = float(v)
+                except ValueError:
+                    pass
+            if ov:
+                items[c] = ov
+        try:
+            coef = float(request.form.get("coef", "1").replace(",", "."))
+        except ValueError:
+            coef = 1.0
+        db = get_db()
+        db.execute("INSERT INTO settings (key, value) VALUES ('prices', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                   (json.dumps({"coef": coef, "items": items}),))
+        db.commit()
+        flash("Цены сохранены — бюджеты объектов пересчитаны", "ok")
+        return redirect(url_for("prices"))
+    return render_template("prices.html", items=mt.apply_overrides(ps.get("items")), coef=ps.get("coef", 1.0),
+                           NOTE=mt.PRICES_NOTE)
 
 # ==========================================================================
 # Администрирование
